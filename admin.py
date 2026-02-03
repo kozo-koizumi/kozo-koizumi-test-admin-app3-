@@ -36,6 +36,54 @@ if not st.session_state.logged_in:
 # ===============================
 # --- 注文一覧画面 ---
 # ===============================
+
+import streamlit as st
+from supabase import create_client, Client
+
+# Supabase 設定
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+st.title("パンツ採寸入力（ウエスト・丈）")
+
+# 受付番号入力
+order_id_input = st.number_input(
+    "受付番号を入力してください",
+    min_value=1,
+    step=1
+)
+
+if st.button("検索"):
+    res = supabase.table("orders").select("*").eq("id", order_id_input).single().execute()
+    st.session_state.order = res.data if res.data else None
+
+order = st.session_state.get("order")
+
+if order:
+    st.success("注文が見つかりました")
+    st.write(f"名前: {order.get('name')}")
+    st.write(f"住所: {order.get('address')}")
+
+    # パンツ情報フォーム
+    with st.form("pants_form"):
+        waist = st.number_input("パンツ ウエスト(cm)", value=order.get("pants_waist") or 0)
+        length = st.number_input("パンツ 丈(cm)", value=int(order.get("pants_length") or 0))
+        memo = st.text_input("備考", value=order.get("pants_memo") or "")
+
+        submitted = st.form_submit_button("保存")
+
+        if submitted:
+            # 更新
+            supabase.table("orders").update({
+                "pants_waist": waist,
+                "pants_length": length,
+                "pants_memo": memo
+            }).eq("id", order["id"]).execute()
+
+            st.success("パンツ採寸を更新しました")
+
+"""
 st.title("注文一覧（管理画面）")
 
 # Supabase から注文を取得
@@ -86,3 +134,4 @@ else:
                 st.write("商品なし")
 
             st.write(f"合計: {total_int:,}円")
+"""
